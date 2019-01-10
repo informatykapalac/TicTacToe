@@ -1,28 +1,34 @@
 import React, { Component } from 'react';
-import Konva from './konva'
-import {image} from './react-konva' 
+import Konva from 'konva';
+import { Image } from 'react-konva';
 
 class Circle extends Component {
   constructor() {
-		
+    super();
+    this.state = {
+      image: null
+    };
+  }
+
+  componentDidMount() {
+    const img = new window.Image();
+    img.src = 'public/circle.png';
+    img.onload = () => {
+      this.setState({
+        image: img
+      });
+    };
   }
 
   render() {
     return(
-      <div>
-	  {
-			const img = new Window.Image();
-			let x = 200;
-			img.src = 'public/circle.png';
-			return (
-				<Image 
-					image = { img }
-					width = { x }
-					height = { x }
-				/>
-			);
-	  }
-	  </div>
+		  <Image
+			  image={this.state.image}
+        width={this.props.x}
+        height={this.props.x}
+        x={0}
+        y={0}
+			/>
     );
   }
 }
