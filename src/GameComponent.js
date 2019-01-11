@@ -1,7 +1,5 @@
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
-import Konva from 'konva';
-import Square from './SquareComponent';
 import { Layer, Stage, Line, Rect, Image } from 'react-konva';
 import { setScreenSize, setCurrentPlayer } from './Redux/reduxActions';
 
@@ -9,7 +7,9 @@ import { setScreenSize, setCurrentPlayer } from './Redux/reduxActions';
 const mapStateToProps = state => {
   return {
     size: state.size,
-    cP: state.currentPlayer
+    cP: state.currentPlayer,
+    players: state.players,
+    shapes: state.shapes
   };
 };
 
@@ -28,6 +28,8 @@ class _Game extends Component {
 		  width: window.innerWidth,
 		  height: window.innerHeight,
       lines: [],
+      squares: [],
+      images: [],
       minX: 0,
       maxX: 0,
       minY: 0,
@@ -37,34 +39,56 @@ class _Game extends Component {
     this.handleResize = this.handleResize.bind(this);
     this.makeMove = this.makeMove.bind(this);
     this.draw = this.draw.bind(this);
-    this.getP = this.getP.bind(this);
   }
 
   makeMove(e) {
-	  e.preventDefault();
-    console.log(e);
 	  const cP = this.state.currentPlayer;
-	  if(cP === 0) {
+    let gameWidth = this.state.width / 4;
+    let gameHeight = this.state.height / 4;
+    let cols = this.props.size.cols;
+    let rows = this.props.size.rows;
+    let x0 = gameWidth + this.state.minX;
+    let x1 = gameWidth + this.state.maxX;
+    let y0 = gameHeight + this.state.minY;
+    let y1 = gameHeight + this.state.maxY;
+    let diffX = (x1 - x0) / cols;
+    let diffY = (y1 - y0) / rows;
 
-	  } else if(cP === 1) {
+    const x = parseInt((e.evt.layerX - x0) / diffX); // "x" myszy
+    const y = parseInt((e.evt.layerY - y0) / diffY); // "y" myszy
 
-	  }
-  }
+    const fieldNumber = (rows * y) + x; // numer pola
 
-  getP(e) {
-    console.log("HI");
+    let images = this.state.images // pobieramy obecne grafiki
+
+    for(let i = 0; i < images.length; i++) { // Czy pole jest puste ?
+      if(images[i].field === fieldNumber) {
+        return;
+      }
+    }
+
+    const img = new window.Image();
+    img.src = "public/" + this.props.shapes.cP;
+
+    images.push({ // wstawiamy grafikę -> POTRZEBNE X, Y, szerokość i wysokość
+      image: img
+    });
+
+    console.log(fieldNumber);
+
   }
 
   draw() {
-    let lines = [];
-    let diff;
-    let minX, maxX, minY, maxY;
+    let lines = []; // linie
+    let squares = []; // pola
+    let diff; // różnica rozmiarów ekranu
+    let minX, maxX, minY, maxY; // rozmiary całego pola gry
     let width = this.state.width;
     let height = this.state.height;
     let rows = this.props.size.rows;
     let cols = this.props.size.cols;
-    const heightLine = (height/2) / rows;
-    const widthLine = (width/2) / cols;
+    const heightLine = (height/2) / rows; // dla linii poziomych
+    const widthLine = (width/2) / cols; // dla linii pionowych
 
     if(width > height) {
       diff = (width-height) / 4; // ((width/2)-(height/2)) / 2
@@ -120,8 +144,28 @@ class _Game extends Component {
 
     }
 
+    //console.log(minX + (width/4), minY + (height/4), maxX + (width/4), maxY + (height/4))
+
+    let deltaX = (maxX - minX) / rows; // różnica szerokości
+    let deltaY = (maxY - minY) / cols; // różnica wysokości
+
+    // minX, ... -> DO WYRZUCENIA ZE STANU
+    // deltaX, deltaY -> DO DODANIA DO STANU
+
+    for(let x = 0; x < rows; x++) {
+      for(let y = 0; y < cols; y++) {
+        squares.push({
+          x: x * deltaX + minX,
+          y: y * deltaY + minY,
+          width: deltaX,
+          height: deltaY
+        });
+      }
+    }
+
     this.setState({
       lines: lines,
+      squares: squares,
       minX: minX,
       maxX: maxX,
       minY: minY,
@@ -159,11 +203,23 @@ class _Game extends Component {
       );
     });
 
+    const squares = this.state.squares.map((square, i) => {
+      return(
+        <Rect
+          x={square.x}
+          y={square.y}
+          width={square.width}
+          height={square.height}
+          onClick={this.makeMove}
+        />
+      );
+    });
+
     return(
       <Stage width={this.state.width} height={this.state.height} x={this.state.width/4} y={this.state.height/4}>
 		    <Layer>
           {lines}
-          <Rect />
+          {squares}
         </Layer>
       </Stage>
     );

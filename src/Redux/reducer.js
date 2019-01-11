@@ -4,10 +4,15 @@ export const initialState = {
     height: window.innerHeight
   },
   currentPlayer: 0,
+  players: 2,
   size: {
     rows: 3,
     cols: 3
-  }
+  },
+  shapes: [
+    "circle.png",
+    "cross.png"
+  ]
 };
 
 export const Reducer = (state = initialState, action) => {
