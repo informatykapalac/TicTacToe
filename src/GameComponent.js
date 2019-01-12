@@ -26,6 +26,7 @@ class _Game extends Component {
     this.state = {
 		  currentPlayer: 0,
       finished: false,
+      stalemate: false,
 		  width: window.innerWidth,
 		  height: window.innerHeight,
       lines: [], // linie
@@ -145,7 +146,6 @@ class _Game extends Component {
         if(filled[j * (cols-1)] !== matchRL || filled[j * (cols-1)] === undefined) {
           break;
         } else if(j === cols) {
-          console.log("RL")
           this.setState({
             finished: true
           });
@@ -153,10 +153,23 @@ class _Game extends Component {
       }
     }
 
-    if(cP < (this.props.players-1)) {
-      cP += 1;
-    } else {
-      cP = 0;
+    for(let n = 0; n < rows*cols; n++) {
+      if(filled[n] === undefined) {
+        break;
+      } else if(n === (rows * cols) - 1) {
+        this.setState({
+          stalemate: true,
+          finished: true
+        });
+      }
+    }
+
+    if(!this.state.finished) {
+      if(cP < (this.props.players-1)) {
+        cP += 1;
+      } else {
+        cP = 0;
+      }
     }
 
     this.setState({
@@ -305,20 +318,21 @@ class _Game extends Component {
 
     let text, player;
 
-    if(this.state.finished) {
+    if(this.state.stalemate) {
       text =
-          <Text
-            text="Wygrał"
-            fontSize={32}
-            x={-100}
-            y={-this.state.height/8}
-          />
-      player =
-        <Circle
-          x={30}
-          y={-this.state.height/8 + 18}
-          radius={16}
-          stroke="black"
+        <Text
+          text="Draw"
+          fontSize={32}
+          x={-100}
+          y={-this.state.height/8}
+        />
+    } else if(this.state.finished) {
+      text =
+        <Text
+          text="Winner"
+          fontSize={32}
+          x={-100}
+          y={-this.state.height/8}
         />
     } else {
       text =
@@ -328,31 +342,32 @@ class _Game extends Component {
           x={-100}
           y={-this.state.height/8}
         />
-      if(this.state.currentPlayer === 0) {
-        player =
-          <Circle
-            x={30}
-            y={-this.state.height/8 + 18}
-            radius={16}
-            stroke="black"
-          />
-      } else if(this.state.currentPlayer === 1) {
-        player =
-        <React.Fragment>
-          <Line
-            x={30}
-            y={-this.state.height/8 + 18}
-            points={[-16, -16, 16, 16]}
-            stroke="black"
-          />
-          <Line
-            x={30}
-            y={-this.state.height/8 + 18}
-            points={[-16, 16, 16, -16]}
-            stroke="black"
-          />
-        </React.Fragment>
-      }
+    }
+
+    if(this.state.currentPlayer === 0 && !this.state.stalemate) {
+      player =
+        <Circle
+          x={30}
+          y={-this.state.height/8 + 18}
+          radius={16}
+          stroke="black"
+        />
+    } else if(this.state.currentPlayer === 1 && !this.state.stalemate) {
+      player =
+      <React.Fragment>
+        <Line
+          x={30}
+          y={-this.state.height/8 + 18}
+          points={[-16, -16, 16, 16]}
+          stroke="black"
+        />
+        <Line
+          x={30}
+          y={-this.state.height/8 + 18}
+          points={[-16, 16, 16, -16]}
+          stroke="black"
+        />
+      </React.Fragment>
     }
 
     const reset =
