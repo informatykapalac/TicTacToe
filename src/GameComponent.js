@@ -135,15 +135,17 @@ class _Game extends Component {
         if(filled[i * (cols+1)] !== matchLR || filled[i * (cols+1)] === undefined) {
           break;
         } else if(i === cols-1) {
+          console.log("LR")
           this.setState({
             finished: true
           });
         }
       }
-      for(let j = 1; j < cols; j++) { // skos prawo -> lewo
+      for(let j = 1; j <= cols; j++) { // skos prawo -> lewo
         if(filled[j * (cols-1)] !== matchRL || filled[j * (cols-1)] === undefined) {
           break;
-        } else if(j === cols-1) {
+        } else if(j === cols) {
+          console.log("RL")
           this.setState({
             finished: true
           });
