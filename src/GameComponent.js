@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
-import { Layer, Stage, Line, Rect, Image } from 'react-konva';
+import { Layer, Stage, Line, Rect, Circle, Text } from 'react-konva';
 import { setScreenSize, setCurrentPlayer } from './Redux/reduxActions';
 
 
@@ -25,11 +25,13 @@ class _Game extends Component {
     super();
     this.state = {
 		  currentPlayer: 0,
+      finished: false,
 		  width: window.innerWidth,
 		  height: window.innerHeight,
-      lines: [],
-      squares: [],
-      images: [],
+      lines: [], // linie
+      squares: [], // czujniki kliknięcia
+      fields: [], // pola
+      filled: [], // info o wypełnionych polach
       minX: 0,
       maxX: 0,
       minY: 0,
@@ -39,10 +41,25 @@ class _Game extends Component {
     this.handleResize = this.handleResize.bind(this);
     this.makeMove = this.makeMove.bind(this);
     this.draw = this.draw.bind(this);
+    this.reset = this.reset.bind(this);
+  }
+
+  reset(e) {
+    this.setState({
+      currentPlayer: 0,
+      finished: false,
+      fields: [],
+      filled: []
+    });
   }
 
   makeMove(e) {
-	  const cP = this.state.currentPlayer;
+
+    if(this.state.finished) {
+      return;
+    }
+
+	  let cP = this.state.currentPlayer;
     let gameWidth = this.state.width / 4;
     let gameHeight = this.state.height / 4;
     let cols = this.props.size.cols;
@@ -59,28 +76,101 @@ class _Game extends Component {
 
     const fieldNumber = (rows * y) + x; // numer pola
 
-    let images = this.state.images // pobieramy obecne grafiki
+    let fields = this.state.fields; // pobieramy obecne grafiki
+    let filled = this.state.filled; // pobieramy wypełnione pola
 
-    for(let i = 0; i < images.length; i++) { // Czy pole jest puste ?
-      if(images[i].field === fieldNumber) {
+    for(let i = 0; i < fields.length; i++) { // Czy pole jest puste ?
+      if(fields[i].field === fieldNumber) {
         return;
       }
     }
 
-    const img = new window.Image();
-    img.src = "public/" + this.props.shapes.cP;
-
-    images.push({ // wstawiamy grafikę -> POTRZEBNE X, Y, szerokość i wysokość
-      image: img
+    fields.push({
+      shape: cP,
+      x: x,
+      y: y,
+      width: gameWidth,
+      height: gameHeight,
+      fieldX: x,
+      fieldY: y,
+      field: fieldNumber
     });
 
-    console.log(fieldNumber);
+    filled[fieldNumber] = cP;
+
+    // Sprawdź, czy ktoś wygrał
+
+    for(let x = 0; x < rows; x++) {
+      const match = filled[x * rows];
+      for(let y = 0; y < cols; y++) { // sprawdzanie poziome
+        if(filled[(x * rows) + y] !== match || filled[(x * rows) + y] === undefined) {
+          break;
+        } else if(y === cols-1) {
+          this.setState({
+            finished: true
+          });
+        }
+      }
+    }
+
+    for(let x = 0; x < cols; x++) {
+      const match = filled[x];
+      for(let y = 0; y < rows; y++) { // sprawdzanie pionowe
+        if(filled[x + (y * cols)] !== match || filled[x + (y * cols)] === undefined) {
+          break;
+        } else if(y === rows-1) {
+          this.setState({
+            finished: true
+          });
+        }
+      }
+    }
+
+    // Jeśli plansza jest kwadratem, sprawdź na skos
+
+    if(rows === cols) {
+      const matchLR = filled[0]; // dla skosu lewo -> prawo
+      const matchRL = filled[cols-1]; // dla skosu prawo -> lewo
+      for(let i = 1; i < cols; i++) { // skos lewo -> prawo
+        if(filled[i * (cols+1)] !== matchLR || filled[i * (cols+1)] === undefined) {
+          break;
+        } else if(i === cols-1) {
+          this.setState({
+            finished: true
+          });
+        }
+      }
+      for(let j = 1; j < cols; j++) { // skos prawo -> lewo
+        if(filled[j * (cols-1)] !== matchRL || filled[j * (cols-1)] === undefined) {
+          break;
+        } else if(j === cols-1) {
+          this.setState({
+            finished: true
+          });
+        }
+      }
+    }
+
+    if(cP < (this.props.players-1)) {
+      cP += 1;
+    } else {
+      cP = 0;
+    }
+
+    this.setState({
+      currentPlayer: cP,
+      fields: fields,
+      filled: filled
+    });
+
+    this.draw();
 
   }
 
   draw() {
     let lines = []; // linie
     let squares = []; // pola
+    let fields = []; // figury na polach
     let diff; // różnica rozmiarów ekranu
     let minX, maxX, minY, maxY; // rozmiary całego pola gry
     let width = this.state.width;
@@ -163,9 +253,28 @@ class _Game extends Component {
       }
     }
 
+    this.state.fields.map((field) => {
+      let radius;
+      if(deltaX < deltaY) {
+        radius = deltaX/cols; // DO SPRAWDZENIA
+      } else {
+        radius = deltaY/rows; // DO SPRAWDZENIA
+      }
+      fields.push({
+        shape: field.shape,
+        fieldX: field.fieldX,
+        fieldY: field.fieldY,
+        field: field.field,
+        x: (width/4) + ((field.fieldX-1) * deltaX),
+        y: (height/4) + ((field.fieldY-1) * deltaY),
+        radius: radius
+      });
+    });
+
     this.setState({
       lines: lines,
       squares: squares,
+      fields: fields,
       minX: minX,
       maxX: maxX,
       minY: minY,
@@ -192,6 +301,70 @@ class _Game extends Component {
 
   render() {
 
+    let text, player;
+
+    if(this.state.finished) {
+      text =
+          <Text
+            text="Wygrał"
+            fontSize={32}
+            x={-100}
+            y={-this.state.height/8}
+          />
+      player =
+        <Circle
+          x={30}
+          y={-this.state.height/8 + 18}
+          radius={16}
+          stroke="black"
+        />
+    } else {
+      text =
+        <Text
+          text="Player:"
+          fontSize={32}
+          x={-100}
+          y={-this.state.height/8}
+        />
+      if(this.state.currentPlayer === 0) {
+        player =
+          <Circle
+            x={30}
+            y={-this.state.height/8 + 18}
+            radius={16}
+            stroke="black"
+          />
+      } else if(this.state.currentPlayer === 1) {
+        player =
+        <React.Fragment>
+          <Line
+            x={30}
+            y={-this.state.height/8 + 18}
+            points={[-16, -16, 16, 16]}
+            stroke="black"
+          />
+          <Line
+            x={30}
+            y={-this.state.height/8 + 18}
+            points={[-16, 16, 16, -16]}
+            stroke="black"
+          />
+        </React.Fragment>
+      }
+    }
+
+    const reset =
+      <React.Fragment>
+        <Text
+          text="Reset"
+          fill="red"
+          fontSize={30}
+          x={-100}
+          y={0}
+          onClick={this.reset}
+        />
+      </React.Fragment>
+
     const lines = this.state.lines.map((line) => {
       return(
         <Line
@@ -203,7 +376,7 @@ class _Game extends Component {
       );
     });
 
-    const squares = this.state.squares.map((square, i) => {
+    const squares = this.state.squares.map((square) => {
       return(
         <Rect
           x={square.x}
@@ -215,11 +388,45 @@ class _Game extends Component {
       );
     });
 
+    const fields = this.state.fields.map((field) => {
+      if(field.shape === 0) {
+        return(
+          <Circle
+            x={field.x}
+            y={field.y}
+            radius={field.radius}
+            stroke="black"
+          />
+        );
+      } else if(field.shape === 1) {
+        return(
+          <React.Fragment>
+          <Line
+            x={field.x}
+            y={field.y}
+            points={[-field.radius, -field.radius, field.radius, field.radius]}
+            stroke="black"
+          />
+          <Line
+            x={field.x}
+            y={field.y}
+            points={[-field.radius, field.radius, field.radius, -field.radius]}
+            stroke="black"
+          />
+          </React.Fragment>
+        );
+      }
+    });
+
     return(
       <Stage width={this.state.width} height={this.state.height} x={this.state.width/4} y={this.state.height/4}>
 		    <Layer>
+          {text}
+          {player}
           {lines}
+          {reset}
           {squares}
+          {fields}
         </Layer>
       </Stage>
     );
