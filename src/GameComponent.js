@@ -49,6 +49,7 @@ class _Game extends Component {
     this.setState({
       currentPlayer: 0,
       finished: false,
+      stalemate: false,
       fields: [],
       filled: []
     });
